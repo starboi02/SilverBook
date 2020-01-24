@@ -77,6 +77,7 @@ public class MainActivity extends AppCompatActivity implements SubjectAdapter.it
     String Branch="null";
     private String mUsername="ANONYMOUS";
     String TAG="MyLOGS";
+    Integer state=0;
 
     //Firebase instance variables
     private FirebaseDatabase mFirebaseDatabase;
@@ -100,134 +101,133 @@ public class MainActivity extends AppCompatActivity implements SubjectAdapter.it
         Log.d(TAG, "onCreate: Starting OnCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+            toolbar = findViewById(R.id.toolbar);
+            setSupportActionBar(toolbar);
+            drawerLayout = findViewById(R.id.navigation_drawer);
 
-        toolbar=findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        drawerLayout=findViewById(R.id.navigation_drawer);
+            navigationView = findViewById(R.id.nav_view);
+            navigationView.setNavigationItemSelectedListener(this);
+            ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, drawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close) {
+                @Override
+                public void onDrawerOpened(View drawerView) {
+                    super.onDrawerOpened(drawerView);
+                    TVnavheadname = findViewById(R.id.TVnavheadname);
+                    if (mUsername.equals("ANONYMOUS")) {
+                    } else
+                        TVnavheadname.setText("Hi! " + mUsername);
+                }
+            };
+            drawerLayout.addDrawerListener(toggle);
+            toggle.syncState();
+            listFrag = new ListFrag();
+            detailFrag = new DetailFrag();
+            blankFrag = new BlankFragment();
 
-        navigationView=findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(this);
-        ActionBarDrawerToggle toggle=new ActionBarDrawerToggle(this,drawerLayout,toolbar,R.string.navigation_drawer_open,R.string.navigation_drawer_close){
-            @Override
-            public void onDrawerOpened(View drawerView) {
-                super.onDrawerOpened(drawerView);
-                TVnavheadname=findViewById(R.id.TVnavheadname);
-                if(mUsername.equals("ANONYMOUS")){}
-                else
-                    TVnavheadname.setText("Hi! "+mUsername);
-            }
-        };
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
-        listFrag=new ListFrag();
-        detailFrag = new DetailFrag();
-        blankFrag=new BlankFragment();
-
-        if(findViewById(R.id.layout_portrait)==null) {
+            if (findViewById(R.id.layout_portrait) == null) {
                 getSupportFragmentManager().beginTransaction().add(R.id.list_frag_cont, listFrag, "listfrag").commit();
                 getSupportFragmentManager().beginTransaction().add(R.id.detail_frag_cont, detailFrag, "detailfrag").commit();
                 getSupportFragmentManager().executePendingTransactions();
                 listFrag = (ListFrag) getSupportFragmentManager().findFragmentByTag("listfrag");
                 detailFrag = (DetailFrag) getSupportFragmentManager().findFragmentByTag("detailfrag");
 
-        }
-        else{
-            getSupportFragmentManager().beginTransaction().replace(R.id.fragCont_portrait, listFrag, "listfrag").commit();
-            getSupportFragmentManager().executePendingTransactions();
-            listFrag = (ListFrag) getSupportFragmentManager().findFragmentByTag("listfrag");
-        }
-        //Getting user preferences.
-        if(savedInstanceState==null) {//All these are disk operations.
-            SharedPreferences faveditor = getSharedPreferences("com.kinshuu.silverbook.ref", MODE_PRIVATE);
-            firsttime = faveditor.getInt("FT", 1);
-            Log.d(TAG, "onCreate: firsttime recieved is "+firsttime);
-            faveditor = getSharedPreferences("com.kinshuu.silverbook.ref", MODE_PRIVATE);
-            College = faveditor.getString("College", "null");
-            Branch = faveditor.getString("Branch", "null");
-            YearOfJoining = faveditor.getInt("YearOfJoining", 0);
-
-            if (College.equals("null") || Branch.equals("null") || YearOfJoining == 0) {
-                Log.d(TAG, "onCreate: Going to take preference from user!");
-                Intent intent = new Intent(MainActivity.this, com.kinshuu.silverbook.UserOrientation.class);
-                startActivityForResult(intent, RC_USER_PREF);
-                gotpreference = 0;
+            } else {
+                getSupportFragmentManager().beginTransaction().replace(R.id.fragCont_portrait, listFrag, "listfrag").commit();
+                getSupportFragmentManager().executePendingTransactions();
+                listFrag = (ListFrag) getSupportFragmentManager().findFragmentByTag("listfrag");
             }
-            subjectsmain = LoadData();
-        }
+            //Getting user preferences.
+            if (savedInstanceState == null) {//All these are disk operations.
+                SharedPreferences faveditor = getSharedPreferences("com.kinshuu.silverbook.ref", MODE_PRIVATE);
+                firsttime = faveditor.getInt("FT", 1);
+                Log.d(TAG, "onCreate: firsttime recieved is " + firsttime);
+                faveditor = getSharedPreferences("com.kinshuu.silverbook.ref", MODE_PRIVATE);
+                College = faveditor.getString("College", "null");
+                Branch = faveditor.getString("Branch", "null");
+                YearOfJoining = faveditor.getInt("YearOfJoining", 0);
 
-        else{
-            Log.d(TAG, "onCreate: getting from savedinstance");
-            firsttime=savedInstanceState.getInt("firsttime");
-            YearOfJoining=savedInstanceState.getInt("YearOfJoining");
-            College=savedInstanceState.getString("College");
-            Branch=savedInstanceState.getString("Branch");
-            subjectsmain=savedInstanceState.getParcelableArrayList("subjectsmain");
-        }
-        if(YearOfJoining>2017&&College.equals("IIIT-A"))
-            Eligible=1;
-        subjectSyncArrayList = SyncData();
-        LogArrayList= getlog();// getting log from disk.
-        mFirebaseDatabase=FirebaseDatabase.getInstance();
-        mFirebaseAuth=FirebaseAuth.getInstance();
-        msubjectsDatabaseReference=mFirebaseDatabase.getReference().child(College).child(YearOfJoining.toString()).child(Branch);
-        Log.d(TAG, "onCreate: Present Database Reference is");
-        Log.d(TAG, "onCreate: College is "+College);
-        Log.d(TAG, "onCreate: Branch is "+Branch);
-        Log.d(TAG, "onCreate: YearOfJoining is "+YearOfJoining);
-
-        if(findViewById(R.id.layout_portrait)==null) {
-            if (subjectsmain.size() == 0) {
-                getSupportFragmentManager().beginTransaction().replace(R.id.list_frag_cont, blankFrag,"blankfrag").commit();
-                getSupportFragmentManager().beginTransaction().replace(R.id.detail_frag_cont, new BlankFragment(),"blankfragdetail").commit();
-            }
-        }
-        else {
-            if (subjectsmain.size() == 0) {
-                getSupportFragmentManager().beginTransaction().replace(R.id.fragCont_portrait, blankFrag,"blankfrag").commit();
-            }
-        }
-
-        //Following code sends data to the list frag, what's important is Activity's OnCreate finishes before Fragments OnActivityCreated starts.
-        Bundle bundle = new Bundle();
-        bundle.putParcelableArrayList("arraylist",subjectsmain);
-        bundle.putInt("elegible",Eligible);
-        bundle.putParcelableArrayList("loglist",LogArrayList);
-        bundle.putInt("size",subjectSyncArrayList.size());
-        if (listFrag != null) {
-            listFrag.getArgs(bundle);
-        }
-        else
-            Log.d(TAG, "onCreate: List frag is null");
-
-        mAuthStateListener=new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                FirebaseUser user= firebaseAuth.getCurrentUser();
-                if(user!=null){
-                    //user is signed in.
-                    //Toast.makeText(MainActivity.this, "Welcome to the App you Son of a Gun", Toast.LENGTH_SHORT).show();
-                    Log.d(TAG, "onAuthStateChanged: User is signed in");
-                    OnSignedInInitialise(user.getDisplayName());
+                if (College.equals("null") || Branch.equals("null") || YearOfJoining == 0) {
+                    Log.d(TAG, "onCreate: Going to take preference from user!");
+                    Intent intent = new Intent(MainActivity.this, com.kinshuu.silverbook.UserOrientation.class);
+                    startActivityForResult(intent, RC_USER_PREF);
+                    gotpreference = 0;
                 }
-                else{
-                    //user is signed out.
-                    Log.d(TAG, "onAuthStateChanged: User is signed out.");
-                    //OnSignedOutInitialise();
-                    startActivityForResult(
-                            AuthUI.getInstance()
-                                    .createSignInIntentBuilder()
-                                    .setIsSmartLockEnabled(false)
-                                    .setLogo(R.drawable.ic_graduate)//Experiment with this.
-                                    .setAvailableProviders(Arrays.asList(
-                                            new AuthUI.IdpConfig.GoogleBuilder().build(),
-                                            new AuthUI.IdpConfig.EmailBuilder().build()))
-                                    .build(),
-                            RC_SIGN_IN);
+                subjectsmain = LoadData();
+            } else {
+                Log.d(TAG, "onCreate: getting from savedinstance");
+                firsttime = savedInstanceState.getInt("firsttime");
+                YearOfJoining = savedInstanceState.getInt("YearOfJoining");
+                College = savedInstanceState.getString("College");
+                Branch = savedInstanceState.getString("Branch");
+                subjectsmain = savedInstanceState.getParcelableArrayList("subjectsmain");
+            }
+            if (YearOfJoining > 2017 && College.equals("IIIT-A"))
+                Eligible = 1;
+            subjectSyncArrayList = SyncData();
+            LogArrayList = getlog();// getting log from disk.
+            mFirebaseDatabase = FirebaseDatabase.getInstance();
+            mFirebaseAuth = FirebaseAuth.getInstance();
+            msubjectsDatabaseReference = mFirebaseDatabase.getReference().child(College).child(YearOfJoining.toString()).child(Branch);
+            Log.d(TAG, "onCreate: Present Database Reference is");
+            Log.d(TAG, "onCreate: College is " + College);
+            Log.d(TAG, "onCreate: Branch is " + Branch);
+            Log.d(TAG, "onCreate: YearOfJoining is " + YearOfJoining);
+
+            if (findViewById(R.id.layout_portrait) == null) {
+                if (subjectsmain.size() == 0) {
+                    getSupportFragmentManager().beginTransaction().replace(R.id.list_frag_cont, blankFrag, "blankfrag").commit();
+                    getSupportFragmentManager().beginTransaction().replace(R.id.detail_frag_cont, new BlankFragment(), "blankfragdetail").commit();
+                }
+            } else {
+                if (subjectsmain.size() == 0) {
+                    getSupportFragmentManager().beginTransaction().replace(R.id.fragCont_portrait, blankFrag, "blankfrag").commit();
                 }
             }
-        };
-        Log.d(TAG, "onCreate: OnCreate ends");
-    }
+
+            //Following code sends data to the list frag, what's important is Activity's OnCreate finishes before Fragments OnActivityCreated starts.
+            Bundle bundle = new Bundle();
+            bundle.putParcelableArrayList("arraylist", subjectsmain);
+            bundle.putInt("elegible", Eligible);
+            bundle.putParcelableArrayList("loglist", LogArrayList);
+            bundle.putInt("size", subjectSyncArrayList.size());
+            if (listFrag != null) {
+                listFrag.getArgs(bundle);
+            } else
+                Log.d(TAG, "onCreate: List frag is null");
+
+            mAuthStateListener = new FirebaseAuth.AuthStateListener() {
+                @Override
+                public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                    FirebaseUser user = firebaseAuth.getCurrentUser();
+                    if (user != null) {
+                        //user is signed in.
+                        //Toast.makeText(MainActivity.this, "Welcome to the App you Son of a Gun", Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "onAuthStateChanged: User is signed in");
+                        OnSignedInInitialise(user.getDisplayName());
+                    } else {
+                        //user is signed out.
+                        Log.d(TAG, "onAuthStateChanged: User is signed out.");
+                        //OnSignedOutInitialise();
+                        startActivityForResult(
+                                AuthUI.getInstance()
+                                        .createSignInIntentBuilder()
+                                        .setIsSmartLockEnabled(false)
+                                        .setLogo(R.drawable.ic_graduate)//Experiment with this.
+                                        .setAvailableProviders(Arrays.asList(
+                                                new AuthUI.IdpConfig.GoogleBuilder().build(),
+                                                new AuthUI.IdpConfig.EmailBuilder().build()))
+                                        .build(),
+                                RC_SIGN_IN);
+                    }
+                }
+            };
+        SharedPreferences prefs = getSharedPreferences("prefs", MODE_PRIVATE);
+        boolean firstStart = prefs.getBoolean("firstStart", true);
+        if (firstStart) {
+            showStartDialog();
+        }
+            Log.d(TAG, "onCreate: OnCreate ends");
+        }
+
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
@@ -237,7 +237,15 @@ public class MainActivity extends AppCompatActivity implements SubjectAdapter.it
         outState.putString("Branch",Branch);
         outState.putParcelableArrayList("subjectsmain",subjectsmain);
         super.onSaveInstanceState(outState);
+
+//        SharedPreferences prefs=getSharedPreferences("prefs",MODE_PRIVATE);
+//        boolean firstStart =prefs.getBoolean("firstStart",true);
+//
+//        if(firstStart) {
+//            showStartDialog();
+//        }
     }
+
 
     //This function is used to update the visibility of views as per the constraints.
     private void UpdateViewVisibility(int i) {
@@ -396,9 +404,27 @@ public class MainActivity extends AppCompatActivity implements SubjectAdapter.it
                 }
             }
         }
+
         Log.d(TAG, "UpdateViewVisibility: exitting function");
     }
 
+    private void showStartDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Information")
+                .setMessage("Tap on a subject to view details!")
+                .setPositiveButton("understood", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        state=-1;
+                        dialogInterface.dismiss();
+                    }
+                })
+                .create().show();
+        SharedPreferences prefs =getSharedPreferences("prefs",MODE_PRIVATE);
+        SharedPreferences.Editor editor =prefs.edit();
+        editor.putBoolean("firstStart",false);
+        editor.apply();
+    }
     //This Function is used to set up subjects for an eligible user when he signs in for the 1st time.
     private ArrayList<Subject> InitialiseSub() {
         Log.d(TAG, "InitialiseSub: Starts");
